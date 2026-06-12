@@ -1,0 +1,9 @@
+{
+    "dependencies": [
+        "."
+    ],
+    "graphs": {
+        "nodes_OG": "./app/agent.py:graph"
+    },
+    "python_version": "3.11"
+}

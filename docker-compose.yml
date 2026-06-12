@@ -8,21 +8,38 @@ services:
       - "11434:11434"
     restart: unless-stopped
 
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
+  ollama-model-puller:
+    image: curlimages/curl:latest
+    container_name: ollama-model-puller
+    depends_on:
+      - ollama
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Esperando que Ollama inicie...';
+      until curl -s http://ollama:11434/api/tags > /dev/null; do sleep 2; done;
+      echo 'Descargando modelo Gemma 4...';
+      curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"gemma4:e4b\"}';
+      echo 'Modelo listo.';
+      "
+
+  # Nuevo contenedor oficial de OpenClaw
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:main
+    container_name: openclaw
     ports:
-      - "3000:8080"
+      - "18789:18789"  # Puerto por defecto del Panel de Control de OpenClaw
     volumes:
-      - open-webui_data:/app/backend/data
+      - openclaw_config:/app/config
     environment:
-      - 'OLLAMA_BASE_URL=http://ollama:11434'
+      - OPENCLAW_GATEWAY_BIND=lan
+      - OPENCLAW_SKIP_ONBOARDING=true
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - ollama
+      - ollama-model-puller
     restart: unless-stopped
 
 volumes:
   ollama_data:
-  open-webui_data:
+  openclaw_config:
