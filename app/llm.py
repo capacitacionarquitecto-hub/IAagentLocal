@@ -16,7 +16,7 @@ class State(BaseModel):
     value: str = ""
     system_message: str = "You are a helpful assistant and you politely answer the user's questions."
 
-system_message = SystemMessage(content="You are a helpful assistant and you poliytely answer the user's questions, I am {name}, and I ask {question}")
+system_message = SystemMessage(content="You are a helpful assistant and you poliytely answer the user's questions, always answer start with name.")
 
 def node_llm(state:State) -> State:
     # Here you would call your LLM and return the response

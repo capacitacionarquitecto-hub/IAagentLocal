@@ -10,4 +10,4 @@ def agent():
 
 @app.get("/llm_agent")
 def llm_agent():
-    return llm_graph.invoke({"question": "Give me a list of the most popular programming languages.", "name": "Andres"})
+    return llm_graph.invoke({"question": "Give me a list of 5 countries.", "name": "Andres"})
