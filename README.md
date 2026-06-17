@@ -1,150 +1,313 @@
 # IAagentLocal
 
-Proyecto de un agente de IA local basado en LangGraph para crear workflows con múltiples nodos y ejecución condicional.
+Proyecto de un agente de IA local basado en LangGraph para crear workflows con múltiples nodos, ejecución condicional y APIs para invocar dos grafos distintos.
+
+---
+
+## 🚀 Qué hace este proyecto
+
+- Ejecuta grafos de LangGraph definidos en `app/agent.py` y `app/llm.py`
+- Expone dos endpoints HTTP:
+  - `/agent` → grafo clásico de nodos con flujo de estado
+  - `/llm_agent` → grafo con un nodo LLM que recibe `system_message`, `question` y `name`
+- Permite probar agentes desde una API local sin necesidad de abrir notebooks
+
+---
 
 ## 📋 Requisitos Previos
 
 - Python 3.11+
 - Conda (Anaconda o Miniconda)
-- Poetry (para gestión de dependencias)
+- Poetry
+- `uvicorn` para correr la API FastAPI
 
-## 🚀 Instalación
+---
 
-### 1. Crear el Entorno Conda
+## 🧩 Estructura del Proyecto
 
-```bash
-conda create -n demo python=3.11
-conda activate demo
-conda install -c conda-forge poetry
-conda env export > environment.yml
+```
+IAagentLocal/
+├── app/
+│   ├── agent.py              # Grafo nodes_OG
+│   ├── llm.py                # Grafo llm_agent con LLM
+│   ├── api.py                # Endpoints FastAPI
+│   └── langgraph.json        # Configuración de LangGraph
+├── notebooks/
+│   └── 01_conditional.ipynb  # Notebook de ejemplo
+├── pyproject.toml
+├── poetry.lock
+├── environment.yml
+├── docker-compose.yml
+├── open-webui_docker-compose.yml
+└── README.md
 ```
 
-### 2. Instalar Dependencias con Poetry
+---
+
+## 🔧 Instalación y dependencias
+
+### 1) Crear el entorno Conda
+
+```bash
+conda create -n iaagentlocal python=3.11 -y
+conda activate iaagentlocal
+```
+
+### 2) Instalar Poetry
+
+```bash
+conda install -c conda-forge poetry -y
+```
+
+### 3) Instalar dependencias del proyecto
 
 ```bash
 cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
 poetry install
 ```
 
-## 📁 Estructura del Proyecto
+### 4) Instalar FastAPI / Uvicorn (si no están instalados)
 
-```
-IAagentLocal/
-├── app/
-│   ├── agent.py              # Definición del grafo y nodos
-│   └── langgraph.json        # Configuración de LangGraph
-├── notebooks/
-│   └── 01_conditional.ipynb  # Notebook de prueba
-├── pyproject.toml            # Configuración de dependencias
-├── poetry.lock               # Lock file de Poetry
-├── environment.yml           # Exportación del entorno Conda
-├── docker-compose.yml        # Configuración Docker (opcional)
-├── open-webui_docker-compose.yml
-├── README.md                 # Este archivo
-└── LICENSE
-
+```bash
+poetry add fastapi uvicorn
 ```
 
-## 🔧 Cambios y Correcciones Realizadas
+> Si no usas Poetry, puedes instalar con `pip install fastapi uvicorn`.
 
-### 1. **Corrección en `pyproject.toml`**
-   - **Problema**: `requires-python = "y"` (valor inválido)
-   - **Solución**: Cambiar a `requires-python = "^3.11"` para compatibilidad con Python 3.11+
+---
 
-### 2. **Corrección en `app/langgraph.json`**
-   - **Problema**: Campo `"dependency"` (singular) no reconocido por LangGraph CLI
-   - **Solución**: Cambiar a `"dependencies"` (plural) como array:
-   ```json
-   {
-       "dependencies": [
-           "."
-       ],
-       "graphs": {
-           "nodes_OG": "./app/agent.py:graph"
-       },
-       "python_version": "3.11"
-   }
-   ```
+## 🏃‍♂️ Ejecutar los agentes desde las APIs
 
-### 3. **Corrección en `app/agent.py`**
-   - **Problema**: KeyError `'custom_name'` en node_2
-   - **Root Cause**: Typo - node_1 establecía `state["customer_name"]` pero node_2 buscaba `state["custom_name"]`
-   - **Solución**: Unificar el nombre de variable a `custom_name` en node_1
-   ```python
-   # Antes: state["customer_name"] = "Node 1"
-   # Después: state["custom_name"] = "Node 1"
-   ```
+### Opción A: Iniciar la API local
 
-### 4. **Instalación de Dependencias**
-   - Se agregaron a `pyproject.toml`:
-     - `langgraph (>=1.2.4,<2.0.0)` - Framework de grafos
-     - `langchain-openai (>=1.3.0,<2.0.0)` - Integración con OpenAI
-     - `python-dotenv (>=1.2.2,<2.0.0)` - Manejo de variables de entorno
-     - `langgraph-cli[inmem] (>=0.4.28,<0.5.0)` - CLI de LangGraph con runtime en memoria
+```bash
+cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
+poetry run uvicorn app.api:app --reload --port 8000
+```
 
-## 🏃 Ejecutar la Aplicación
+### Endpoints disponibles
 
-### Usar LangGraph Dev Server
+- `http://127.0.0.1:8000/agent` → ejecuta `app/agent.py`
+- `http://127.0.0.1:8000/llm_agent` → ejecuta `app/llm.py`
+
+### Ejemplos de uso
+
+```bash
+curl http://127.0.0.1:8000/agent
+curl http://127.0.0.1:8000/llm_agent
+```
+
+### Ejemplos de uso con `/llm_agent` y payload JSON
+
+```bash
+curl -X POST http://127.0.0.1:8000/llm_agent \
+  -H "Content-Type: application/json" \
+  -d '{"question": "¿Cuál es 2 + 2?", "name": "Andrés"}'
+
+curl -X POST http://127.0.0.1:8000/llm_agent \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Escribe un saludo corto.", "name": "María", "system_message": "Eres una asistente amable que responde en español."}'
+```
+
+### Opción B: Ejecutar LangGraph Dev Server
 
 ```bash
 cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
 poetry run langgraph dev --config app/langgraph.json
 ```
 
-Esto inicia un servidor de desarrollo en:
+Esto inicia el servidor LangGraph:
 - **API**: http://127.0.0.1:2024
 - **Studio UI**: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 
-### Ejecutar Notebooks
+---
 
-```bash
-# Instalar Jupyter si no está disponible
-pip install jupyter
+## 💡 Cómo funciona cada grafo
 
-# Ejecutar notebook
-jupyter notebook notebooks/01_conditional.ipynb
-```
+### `/agent` — grafo clásico (`app/agent.py`)
 
-## 📊 Estructura del Grafo (agent.py)
+- Flujo lineal: `START → node_1 → node_2 → node_3 → END`
+- `node_1` inicializa el estado
+- `node_2` transforma los datos usando el valor anterior
+- `node_3` finaliza el recorrido
+- Ideal para lógica de negocio secuencial y procesamiento de estado
 
-El grafo define 3 nodos:
+### `/llm_agent` — grafo LLM (`app/llm.py`)
 
-```
-START → node_1 → node_2 → node_3 → END
-```
+- Recibe `question`, `name` y `system_message`
+- Construye un `SystemMessage` dinámico usando esos valores
+- Pasa `SystemMessage` + `HumanMessage` al modelo LangChain
+- Devuelve un nuevo estado con la respuesta en `value`
+- Ideal para chatbots o agentes conversacionales con instrucciones personalizadas
 
-**node_1**: Inicializa estado con valor "Hello World, New Agent" y custom_name = "Node 1"
+---
 
-**node_2**: Accede a custom_name y crea un mensaje concatenado
+## 🌟 Características principales
 
-**node_3**: Nodo final de transición
+- Dos agentes separados con responsabilidades claras
+- API REST fácil de consumir
+- Uso de `State` tipado con Pydantic para validación
+- Soporte para mensajes de sistema dinámicos
+- Puede ejecutarse desde FastAPI o desde LangGraph Studio
 
-**Estado (TypedDict)**:
-```python
-class State(TypedDict):
-    name: str
-    value: str
-    custom_name: str
-```
+---
 
-## 🐳 Docker (Opcional)
+## ⚠️ Notas importantes
 
-Para ejecutar con Docker Compose:
+- El endpoint `/agent` usa `agent.py`
+- El endpoint `/llm_agent` usa `llm.py`
+- Si usas `/llm_agent`, asegúrate de enviar `question` y `name` según tu caso
+- Para variables de entorno, añade un archivo `.env` en la raíz si necesitas claves de API
 
-```bash
-docker-compose up -d
-```
-
-## 📝 Notas Importantes
-
-1. **Versión de Python**: El proyecto está configurado para Python 3.11+
-2. **Variables de Entorno**: Crear un archivo `.env` si se necesita configurar variables (OpenAI API key, etc.)
-3. **Persistencia**: El servidor dev usa persistencia en memoria (no persistente entre reinicios)
-4. **Studio**: Acceder a LangGraph Studio en el navegador para visualizar y depurar el grafo
+---
 
 ## 📚 Referencias
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [LangChain Documentation](https://python.langchain.com/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Poetry Documentation](https://python-poetry.org/)
+
+---
+
+# IAagentLocal (English)
+
+Local AI agent project based on LangGraph, with multiple node workflows, conditional execution, and HTTP APIs.
+
+## 🚀 What this project does
+
+- Runs two separate graphs:
+  - `app/agent.py` → classic node workflow
+  - `app/llm.py` → LLM-based node workflow
+- Exposes two HTTP endpoints:
+  - `/agent` for the classic agent graph
+  - `/llm_agent` for the LLM graph
+- Lets you test agents from a local API without opening notebooks
+
+## 📋 Prerequisites
+
+- Python 3.11+
+- Conda (Anaconda or Miniconda)
+- Poetry
+- `uvicorn` for FastAPI
+
+## 🧩 Project structure
+
+```
+IAagentLocal/
+├── app/
+│   ├── agent.py
+│   ├── llm.py
+│   ├── api.py
+│   └── langgraph.json
+├── notebooks/
+├── pyproject.toml
+├── poetry.lock
+├── environment.yml
+├── docker-compose.yml
+├── open-webui_docker-compose.yml
+└── README.md
+```
+
+## 🔧 Install dependencies
+
+### 1) Create the Conda environment
+
+```bash
+conda create -n iaagentlocal python=3.11 -y
+conda activate iaagentlocal
+```
+
+### 2) Install Poetry
+
+```bash
+conda install -c conda-forge poetry -y
+```
+
+### 3) Install project dependencies
+
+```bash
+cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
+poetry install
+```
+
+### 4) Install FastAPI / Uvicorn
+
+```bash
+poetry add fastapi uvicorn
+```
+
+> Or: `pip install fastapi uvicorn`
+
+## 🏃 Run the agents via API
+
+### Option A: start the local API
+
+```bash
+cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
+poetry run uvicorn app.api:app --reload --port 8000
+```
+
+### Available endpoints
+
+- `http://127.0.0.1:8000/agent`
+- `http://127.0.0.1:8000/llm_agent`
+
+### Example calls
+
+```bash
+curl http://127.0.0.1:8000/agent
+curl http://127.0.0.1:8000/llm_agent
+```
+
+### Option B: run LangGraph Dev Server
+
+```bash
+cd F:\CAPACITACION\PORTAFOLIO\IAagentLocal
+poetry run langgraph dev --config app/langgraph.json
+```
+
+This starts:
+- **API**: http://127.0.0.1:2024
+- **Studio UI**: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
+
+## 💡 How each graph works
+
+### `/agent` — classic graph (`app/agent.py`)
+
+- Linear workflow: `START → node_1 → node_2 → node_3 → END`
+- `node_1` initializes state
+- `node_2` transforms state data
+- `node_3` completes the workflow
+- Good for sequential business logic
+
+### `/llm_agent` — LLM graph (`app/llm.py`)
+
+- Accepts `question`, `name`, and `system_message`
+- Builds a dynamic `SystemMessage` from state values
+- Sends `SystemMessage` + `HumanMessage` to the model
+- Returns the answer in `value`
+- Ideal for conversational agents and prompt customization
+
+## 🌟 Main features
+
+- Two separate agent graphs
+- REST API access
+- Pydantic-validated state model
+- Dynamic system prompt support
+- Can run with FastAPI or LangGraph Studio
+
+## ⚠️ Important notes
+
+- `/agent` calls `agent.py`
+- `/llm_agent` calls `llm.py`
+- If you use `/llm_agent`, send `question` and `name` as appropriate
+- Add a `.env` file if you need API keys or environment variables
+
+## 📚 References
+
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [LangChain Documentation](https://python.langchain.com/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Poetry Documentation](https://python-poetry.org/)
 

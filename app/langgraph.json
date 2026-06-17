@@ -4,7 +4,8 @@
     ],
     "graphs": {
         "nodes_OG": "./agent.py:graph",
-        "llm_agent": "./llm.py:graph"
+        "llm_agent": "./llm.py:graph",
+        "tools": "./tools.py:graph"
     },
     "python_version": "3.11",
     "env": ".env"
